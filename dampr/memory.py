@@ -20,9 +20,7 @@ def get_cur_memory():
 
     elif platform.system() == "Darwin":
         rusage_denom = 1024. ** 2
-        mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rusage_denom
-        return mem
-
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rusage_denom
     # Sorry windows, not sure what to do
     raise Exception("This method doesn't support Windows currently")
 
@@ -58,8 +56,7 @@ class ExponentialMemoryChecker(object):
             if (self.last_check + 1) < next_check:
                 cur_memory = get_cur_memory()
                 if cur_memory >= self.start_memory + self.max_memory_in_mbs:
-                    logging.debug("cur_memory:{},start_memory:{}".format(
-                        cur_memory, self.start_memory))
+                    logging.debug(f"cur_memory:{cur_memory},start_memory:{self.start_memory}")
 
                     # ok, time to dump
                     return True
@@ -104,8 +101,7 @@ class InterpolativeMemoryChecker(object):
             cur_memory = get_cur_memory()
             self.update_mem_per_item(cur_memory)
             if cur_memory >= self.start_memory + self.max_memory_in_mbs:
-                logging.debug("cur_memory:{},start_memory:{}".format(
-                    cur_memory, self.start_memory))
+                logging.debug(f"cur_memory:{cur_memory},start_memory:{self.start_memory}")
 
                 # ok, time to dump
                 return True
@@ -119,4 +115,4 @@ def MemoryChecker(*args, **kwargs):
     elif settings.memory_checker_type == "interpolative":
         return InterpolativeMemoryChecker(*args, **kwargs)
     else:
-        raise TypeError("Unknown mem_checker {}".format(settings.memory_checker_type))
+        raise TypeError(f"Unknown mem_checker {settings.memory_checker_type}")

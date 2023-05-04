@@ -185,12 +185,12 @@ class DamprTest(unittest.TestCase):
         """
         path = "/tmp/dampr_test_sink"
         sink = self.items.map(lambda x: str(x)) \
-                .sink(path=path)
+                    .sink(path=path)
 
         output = sink.count()
 
         results = sorted(list(output.run()))
-        self.assertEquals([('{}'.format(i), 1) for i in range(10, 20)], results)
+        self.assertEquals([(f'{i}', 1) for i in range(10, 20)], results)
 
         shutil.rmtree(path)
 
@@ -383,16 +383,16 @@ class DamprTest(unittest.TestCase):
         import os
         files = []
         for i in range(10):
-            path = os.path.join('/tmp', '_test_dampr_{}'.format(i))
+            path = os.path.join('/tmp', f'_test_dampr_{i}')
             with open(path, 'w') as out:
                 out.write(str(i))
 
             files.append(path)
 
         results = Dampr.text("/tmp/_test_dampr_[135]") \
-                .map(int) \
-                .fold_by(lambda x: 1, lambda x,y: x + y) \
-                .read()
+                    .map(int) \
+                    .fold_by(lambda x: 1, lambda x,y: x + y) \
+                    .read()
 
         self.assertEqual(results, [(1, 1 + 3 + 5)])
 
@@ -418,7 +418,7 @@ class DamprTest(unittest.TestCase):
         import os
         dirnames = []
         for i in range(10):
-            dirname = os.path.join('/tmp', '_test_dampr_dir_{}'.format(i))
+            dirname = os.path.join('/tmp', f'_test_dampr_dir_{i}')
             if os.path.isdir(dirname):
                 shutil.rmtree(dirname)
 
@@ -442,18 +442,18 @@ class DamprTest(unittest.TestCase):
 
         # Yields nothing!
         results = Dampr.text(base) \
-                .map(int) \
-                .fold_by(lambda x: 1, lambda x,y: x + y) \
-                .read()
+                    .map(int) \
+                    .fold_by(lambda x: 1, lambda x,y: x + y) \
+                    .read()
 
         self.assertEqual(results, [])
 
 
         # Yields something!
         results = Dampr.text(base, followlinks=True) \
-                .map(int) \
-                .fold_by(lambda x: 1, lambda x,y: x + y) \
-                .read()
+                    .map(int) \
+                    .fold_by(lambda x: 1, lambda x,y: x + y) \
+                    .read()
 
         self.assertEqual(results, [(1, 1 + 3 + 5)])
 

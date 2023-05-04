@@ -129,25 +129,23 @@ class MapStageRunner(StageRunner):
         logging.debug("Mapper: %i: Finished Map-Combine", w_id)
 
     def launch_process(self, p_id, input_q, output_q):
-        fs = self.fs.get_worker('map/{}'.format(p_id))
+        fs = self.fs.get_worker(f'map/{p_id}')
 
         if self.mapper.combiner is None and self.mapper.shuffler is None:
-
-            p = multiprocessing.Process(target=self.simple_map,
-                args=(input_q, output_q, fs))
-        else:
-            c = NoopCombiner() if self.mapper.combiner is None else self.mapper.combiner
-            if self.options.get('memory', False):
-                writer_cls = lambda fs: MaxMemoryWriter(UnorderedDiskWriter(fs))
-            else:
-                writer_cls = lambda fs: MaxMemoryWriter(UnorderedMemoryWriter(fs))
-
-            s = DefaultShuffler(self.n_partitions, Splitter(), writer_cls)
-            o = self.mapper.options
-            p = multiprocessing.Process(target=self.medium_map,
-                args=(input_q, output_q, c, s, fs))
-
-        return p
+            return multiprocessing.Process(
+                target=self.simple_map, args=(input_q, output_q, fs)
+            )
+        c = NoopCombiner() if self.mapper.combiner is None else self.mapper.combiner
+        writer_cls = (
+            (lambda fs: MaxMemoryWriter(UnorderedDiskWriter(fs)))
+            if self.options.get('memory', False)
+            else (lambda fs: MaxMemoryWriter(UnorderedMemoryWriter(fs)))
+        )
+        s = DefaultShuffler(self.n_partitions, Splitter(), writer_cls)
+        o = self.mapper.options
+        return multiprocessing.Process(
+            target=self.medium_map, args=(input_q, output_q, c, s, fs)
+        )
 
 class SinkStageRunner(StageRunner):
     def __init__(self, max_procs, mapper, path):
@@ -189,10 +187,7 @@ class SinkStageRunner(StageRunner):
         logging.debug("Sink: %i: Finished", w_id)
 
     def launch_process(self, pid, input_q, output_q):
-        p = multiprocessing.Process(target=self.sink,
-            args=(input_q, output_q))
-
-        return p
+        return multiprocessing.Process(target=self.sink, args=(input_q, output_q))
 
 class CombinerStageRunner(StageRunner):
     """
@@ -251,13 +246,10 @@ class CombinerStageRunner(StageRunner):
         output_q.put(dw.finished()[0])
 
     def launch_process(self, p_id, input_q, output_q):
-        fs = self.fs.get_worker('merge/{}'.format(p_id))
+        fs = self.fs.get_worker(f'merge/{p_id}')
 
         f = self.combine_per_key if self.per_tid else self.combine
-        p = multiprocessing.Process(target=f,
-            args=(input_q, output_q, fs))
-
-        return p
+        return multiprocessing.Process(target=f, args=(input_q, output_q, fs))
 
 class ReduceStageRunner(StageRunner):
     def __init__(self, max_procs, fs, reducer, options):
@@ -282,15 +274,14 @@ class ReduceStageRunner(StageRunner):
         logging.debug("Reducer: %i: Finished", w_id)
 
     def launch_process(self, p_id, input_q, output_q):
-        fs = self.fs.get_worker('red/{}'.format(p_id))
+        fs = self.fs.get_worker(f'red/{p_id}')
 
         if self.options.get('memory', False):
             dw = ContiguousMemoryWriter(fs)
         else:
             dw = ContiguousDiskWriter(fs)
 
-        m = multiprocessing.Process(target=self.reduce,
-            args=(input_q, output_q, dw))
-
-        return m
+        return multiprocessing.Process(
+            target=self.reduce, args=(input_q, output_q, dw)
+        )
 

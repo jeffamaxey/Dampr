@@ -34,7 +34,7 @@ except ImportError:
         pickle.dump(o, f,  pickle.HIGHEST_PROTOCOL)
 
 def gc_collect():
-    logging.debug("Collecting gc: {}".format(gc.collect()))
+    logging.debug(f"Collecting gc: {gc.collect()}")
 
 def gzip_reader(*args, **kwargs):
     fd = gzip.GzipFile(*args, **kwargs)
@@ -227,7 +227,7 @@ class CSDatasetWriter(DatasetWriter):
         self.kvs = []
         self.partitions = []
         for i in range(self.n_partitions):
-            sub_fs = self.worker_fs.get_substage('partition_{}'.format(i))
+            sub_fs = self.worker_fs.get_substage(f'partition_{i}')
             self.partitions.append(self.writer_cls(sub_fs, **self.writer_args))
             self.partitions[-1].start()
 
@@ -269,7 +269,7 @@ class SinkWriter(DatasetWriter):
         super(SinkWriter, self).__init__(None)
         self.path = path
         self.idx = idx
-        self.fname = os.path.join(self.path, 'part-{}'.format(self.idx))
+        self.fname = os.path.join(self.path, f'part-{self.idx}')
 
     def start(self):
         self.f = open(self.fname, 'w', encoding='utf-8')
@@ -352,14 +352,12 @@ class UnorderedWriter(SimpleWriter):
     def _write_to_gzip(self, fobj):
         buf = self.buffer
         with gzip.GzipFile(fileobj=fobj, 
-                mode='wb', 
-                compresslevel=settings.compress_level) as f:
+                    mode='wb', 
+                    compresslevel=settings.compress_level) as f:
 
             buf.seek(0)
-            data = buf.read(4096 * 4)
-            while data:
+            while data := buf.read(4096 * 4):
                 f.write(data)
-                data = buf.read(4096 * 4)
 
     def flush(self):
         raise NotImplementedError()
@@ -469,7 +467,7 @@ class TextLineDataset(Dataset):
                     break
 
     def __str__(self):
-        return "Text[path={},start={},end={}]".format(self.path,self.start, self.end)
+        return f"Text[path={self.path},start={self.start},end={self.end}]"
 
     def delete(self):
         pass
@@ -486,7 +484,7 @@ class GzipLineDataset(Dataset):
                 cur_pos += len(line)
 
     def __str__(self):
-        return "GzipFile[path={}]".format(self.path)
+        return f"GzipFile[path={self.path}]"
 
     def delete(self):
         pass
@@ -499,12 +497,10 @@ class PickledDataset(Dataset):
     def read(self):
         with gzip_reader(self.path, 'rb') as f:
             try:
-                if self.batched:
-                    while True:
-                        for d in pickle.load(f):
-                            yield d
-                else:
-                    while True:
+                while True:
+                    if self.batched:
+                        yield from pickle.load(f)
+                    else:
                         yield pickle.load(f)
 
             except EOFError:
@@ -514,7 +510,7 @@ class PickledDataset(Dataset):
         os.unlink(self.path)
 
     def __str__(self):
-        return 'PickledDataset[path={}]'.format(self.path)
+        return f'PickledDataset[path={self.path}]'
     __repr__ = __str__
 
 
@@ -526,13 +522,11 @@ class MemGZipDataset(Dataset):
     def read(self):
         with gzip_reader(fileobj=StringIO(self.sio)) as sio:
             try:
-                if not self.batched:
-                    while True:
+                while True:
+                    if not self.batched:
                         yield pickle.load(sio)
-                else:
-                    while True:
-                        for d in pickle.load(sio):
-                            yield d
+                    else:
+                        yield from pickle.load(sio)
             except EOFError:
                 pass
 
@@ -546,16 +540,14 @@ class CatDataset(Dataset, Chunker):
 
     def read(self):
         for ds in self.datasets:
-            for x in ds.read():
-                yield x
+            yield from ds.read()
 
     def delete(self):
         for d in self.datasets:
             d.delete()
 
     def chunks(self):
-        for d in self.datasets:
-            yield d
+        yield from self.datasets
 
 class MergeDataset(Dataset, Chunker):
     def __init__(self, datasets):
@@ -572,8 +564,7 @@ class MergeDataset(Dataset, Chunker):
         return heapq.merge(*its)
 
     def chunks(self):
-        for d in self.datasets:
-            yield d
+        yield from self.datasets
 
 
     def delete(self):
@@ -586,8 +577,7 @@ class MemoryDataset(Dataset):
         self.partitions = partitions
 
     def read(self):
-        for k, v in self.kvs:
-            yield k, v
+        yield from self.kvs
 
     def delete(self):
         pass
@@ -618,6 +608,5 @@ class DMChunker(Chunker):
 
     def chunks(self):
         for vs in self.dm.values():
-            for v in vs:
-                yield v
+            yield from vs
 

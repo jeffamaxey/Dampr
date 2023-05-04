@@ -15,7 +15,7 @@ def main(fname):
 
     results = wc.run("word-count")
     for k, v in results:
-        print("{}:".format(k), v)
+        print(f"{k}:", v)
 
     results.delete()
 

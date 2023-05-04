@@ -12,7 +12,7 @@ RX = re.compile(r'[^\w]+')
 with open(sys.argv[1]) as f:
     counter = Counter()
     for num_rows, line in enumerate(f):
-        counter.update(set(RX.split(line.lower())))
+        counter |= set(RX.split(line.lower()))
 
     total = num_rows + 1
     if not os.path.isdir(OUTDIR):

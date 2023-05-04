@@ -29,12 +29,11 @@ class Map(Mapper, Streamable):
 
     def stream(self, kvs):
         for key, value in kvs:
-            for nkv in self.mapper(key, value):
-                yield nkv
+            yield from self.mapper(key, value)
 
     def __unicode__(self):
         name = getattr(self.mapper, '__name__', str(type(self.mapper)))
-        return u'Map[{}]'.format(name)
+        return f'Map[{name}]'
 
     __str__ = __unicode__
     __repr__ = __unicode__
@@ -94,11 +93,8 @@ class BlockMapper(Mapper, Streamable):
     def stream(self, kvs):
         self.start()
         for key, value in kvs:
-            for out in self.add(key, value):
-                yield out
-
-        for out in self.finish():
-            yield out
+            yield from self.add(key, value)
+        yield from self.finish()
 
 class StreamMapper(Mapper, Streamable):
     """
@@ -118,7 +114,7 @@ class StreamMapper(Mapper, Streamable):
 
     def __unicode__(self):
         name = getattr(self.streamer_f, '__name__', str(type(self.streamer_f)))
-        return u'StreamMapper[{}]'.format(self.streamer_f.__name__)
+        return f'StreamMapper[{self.streamer_f.__name__}]'
 
     __str__ = __unicode__
     __repr__ = __unicode__
@@ -159,8 +155,7 @@ class MapCrossJoin(Mapper):
 
         for key, value in left.read():
             for key2, value2 in read_right():
-                for k3, v3 in self.crosser(key, value, key2, value2):
-                    yield k3, v3
+                yield from self.crosser(key, value, key2, value2)
 
 class MapAllJoin(Mapper):
     def __init__(self, crosser, load_f=lambda d: [v for k, v in d]):
@@ -174,8 +169,7 @@ class MapAllJoin(Mapper):
         # Cache the results
         right = self.load_f(right.read())
         for key, value in left.read():
-            for k, v in self.crosser(key, value, right):
-                yield k, v
+            yield from self.crosser(key, value, right)
 
 class Reducer(object):
     def reduce(self, *datasets):
@@ -224,11 +218,8 @@ class BlockReducer(Reducer):
         assert len(datasets) == 1
         self.start()
         for k, vs in self.yield_groups(datasets[0]):
-            for nk, nv in self.add(k, vs):
-                yield nk, nv
-
-        for nk, nv in self.finish():
-            yield nk, nv
+            yield from self.add(k, vs)
+        yield from self.finish()
 
 class StreamReducer(Reducer):
     """
@@ -245,7 +236,7 @@ class StreamReducer(Reducer):
 
     def __unicode__(self):
         name = getattr(self.stream_f, '__name__', str(type(self.stream_f)))
-        return u'StreamReducer[{}]'.format(self.stream_f.__name__)
+        return f'StreamReducer[{self.stream_f.__name__}]'
 
     __str__ = __unicode__
     __repr__ = __unicode__
@@ -299,10 +290,10 @@ class LeftJoin(Reducer):
         left, right = next(g1, None), next(g2, None)
         while left is not None and right is not None:
             k = left[0]
-            if left[0] < right[0]:
+            if k < right[0]:
                 yield k, self.joiner_f(k, left[1], self.default())
                 left = next(g1, None)
-            elif left[0] > right[0]:
+            elif k > right[0]:
                 right = next(g2, None)
             else:
                 yield k, self.joiner_f(k, left[1], right[1])
@@ -418,7 +409,7 @@ class DefaultShuffler(Shuffler):
     def shuffle(self, fs, datasets):
         partitions = []
         for i in range(self.n_partitions):
-            writer = self.writer_cls(fs.get_substage('partition_{}'.format(i)))
+            writer = self.writer_cls(fs.get_substage(f'partition_{i}'))
             writer.start()
             partitions.append(writer)
 
@@ -426,25 +417,21 @@ class DefaultShuffler(Shuffler):
             p_idx = self.splitter.partition(k, self.n_partitions)
             partitions[p_idx].add_record(k, v)
 
-        splits = {}
-        for i, writer in enumerate(partitions):
-            splits[i] = writer.finished()[0]
-
-        return splits
+        return {i: writer.finished()[0] for i, writer in enumerate(partitions)}
 
 class FileSystem(object):
     def __init__(self, path):
         self.path = path
 
     def get_stage(self, name):
-        return StageFileSystem(os.path.join(self.path, 'stage_{}'.format(name)))
+        return StageFileSystem(os.path.join(self.path, f'stage_{name}'))
 
 class StageFileSystem(object):
     def __init__(self, path):
         self.path = path
 
     def get_worker(self, w_id):
-        return WorkerFileSystem(os.path.join(self.path, 'worker_{}'.format(w_id)))
+        return WorkerFileSystem(os.path.join(self.path, f'worker_{w_id}'))
 
 class WorkingFileSystem(object):
     def __init__(self, path):
@@ -457,13 +444,12 @@ class WorkingFileSystem(object):
         if not os.path.isdir(self.path):
             os.makedirs(self.path)
 
-        new_file = os.path.join(self.path, name)
-        return new_file
+        return os.path.join(self.path, name)
 
 class WorkerFileSystem(WorkingFileSystem):
             
     def get_substage(self, s):
-        return SubStageFileSystem(os.path.join(self.path, 'sub_{}'.format(s)))
+        return SubStageFileSystem(os.path.join(self.path, f'sub_{s}'))
 
 class SubStageFileSystem(WorkingFileSystem):
     pass

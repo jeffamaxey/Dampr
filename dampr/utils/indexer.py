@@ -14,7 +14,7 @@ class Indexer(object):
 
     def get_idx(self, path):
         dirname, base = os.path.split(path)
-        return os.path.join(dirname, "." + base + self.suffix)
+        return os.path.join(dirname, f".{base}{self.suffix}")
 
     def exists(self, path):
         return os.path.isfile(self.get_idx(path))
@@ -33,9 +33,7 @@ class Indexer(object):
         return sqlite3.connect(path)
 
     def build(self, key_f, force=False):
-        paths = list(read_paths(self.path, False))
-        paths.sort()
-
+        paths = sorted(read_paths(self.path, False))
         def index_file(fname):
             logging.debug("Indexing %s", fname)
             db = self.create_db(fname)
@@ -60,14 +58,14 @@ class Indexer(object):
             c.execute("select count(*) from key_index")
             count = c.fetchone()[0]
             logging.debug("Keys indexed for %s: %s", fname, count)
-            
+
             return count
 
         return Dampr.memory(paths) \
-                .filter(lambda fname: force or not self.exists(fname)) \
-                .map(index_file) \
-                .fold_by(key=lambda x: 1, binop=lambda x,y: x + y) \
-                .read(name="indexing")
+                    .filter(lambda fname: force or not self.exists(fname)) \
+                    .map(index_file) \
+                    .fold_by(key=lambda x: 1, binop=lambda x,y: x + y) \
+                    .read(name="indexing")
 
     def union(self, keys):
         if not isinstance(keys, (list, tuple)):

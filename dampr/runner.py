@@ -28,7 +28,7 @@ class Source(object):
         return self.cnt == other.cnt
 
     def __str__(self):
-        return "Source[`{}`]".format(self.name)
+        return f"Source[`{self.name}`]"
 
     __repr__ = __str__
 
@@ -67,7 +67,7 @@ class GSink(object):
         self.options = options if options is not None else  {}
 
     def __unicode__(self):
-        return u"Sink[path={}]".format(self.path)
+        return f"Sink[path={self.path}]"
 
     __repr__ = __unicode__
 
@@ -84,7 +84,7 @@ class Graph(object):
 
     def add_input(self, dataset):
         ng = self._copy_graph()
-        inp = Source('Input:{}'. format(len(self.inputs)))
+        inp = Source(f'Input:{len(self.inputs)}')
         ng.inputs[inp] = dataset
         return inp, ng
 
@@ -151,13 +151,9 @@ class RunnerBase(object):
     def format_outputs(self, outputs):
         new_ret = []
         for output in outputs:
-            if len(output) == 1:
-                output = output[0]
-            else:
-                output = MergeDataset(output)
-
+            output = output[0] if len(output) == 1 else MergeDataset(output)
             new_ret.append(output)
-        
+
         return new_ret
         
     def collapse_datamappings(self, data_mappings):
@@ -363,12 +359,7 @@ class MTRunner(RunnerBase):
                 jobs = self.chunk_list(None, output)
                 output = [p for ps in csr.run(jobs) for p in ps]
 
-            if len(output) == 1:
-                output = output[0]
-
-            else:
-                output = MergeDataset(output)
-
+            output = output[0] if len(output) == 1 else MergeDataset(output)
             ret.append(output)
 
         return ret

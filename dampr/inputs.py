@@ -24,8 +24,7 @@ def read_paths(paths, follow_links):
                 else:
                     for root, dirs, files in os.walk(path, followlinks=follow_links):
                         for fname in files:
-                            path = os.path.join(root, fname)
-                            yield path
+                            yield os.path.join(root, fname)
 
     return (p for p in it() if not os.path.basename(p).startswith('.'))
 
@@ -37,8 +36,7 @@ class PathInput(Chunker):
 
     def chunks(self):
         for path in read_paths(self.path, self.follow_links):
-            for c in TextInput(path, self.chunk_size).chunks():
-                yield c
+            yield from TextInput(path, self.chunk_size).chunks()
 
 class TextInput(Chunker):
     def __init__(self, path, chunk_size=64*1024**2):

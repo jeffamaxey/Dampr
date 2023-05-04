@@ -67,7 +67,7 @@ class PBase(object):
         Returns a ValueEmitter useful for shell access.
         """
         if name is None:
-            name = 'dampr/{}'.format(random.random())
+            name = f'dampr/{random.random()}'
 
         logging.debug("run source: %s", self.source)
         ds = self.pmer.runner(name, self.pmer.graph, **kwargs).run([self.source])
@@ -141,7 +141,7 @@ class PMap(PBase):
         """
         if len(self.agg) > 0 or force:
             aggs = [Map(_identity)] if len(self.agg) == 0 else self.agg[:]
-            name = ' -> ' .join('{}'.format(str(a)) for a in aggs)
+            name = ' -> ' .join(f'{str(a)}' for a in aggs)
             name = 'Stage {}: %s' % (name)
             source, pmer = self.pmer._add_mapper([self.source], 
                     fuse(aggs), 
@@ -509,7 +509,7 @@ class PMap(PBase):
             >>> open("/tmp/foo/part-2").read()
     """
         aggs = [Map(_identity)] if len(self.agg) == 0 else self.agg[:]
-        name = ' -> ' .join('{}'.format(unicode(a)) for a in aggs)
+        name = ' -> ' .join(f'{unicode(a)}' for a in aggs)
         name = 'Stage {}: %s' % (name)
         source, pmer = self.pmer._add_sink([self.source], 
                 fuse(aggs), 
@@ -912,7 +912,7 @@ class Dampr(object):
         return PMap(source, Dampr(ng))
 
     @classmethod
-    def run(self, *pmers, **kwargs):
+    def run(cls, *pmers, **kwargs):
         """
         Runs a graph or set of graphs.
 
@@ -924,7 +924,7 @@ class Dampr(object):
             >>> right.read()
             [6, 7, 8, 9, 10]
         """
-        assert len(pmers) > 0, "Need at least one graph to run!"
+        assert pmers, "Need at least one graph to run!"
         sources = []
         graph = None
         for i, pmer in enumerate(pmers):
@@ -932,15 +932,11 @@ class Dampr(object):
                 pmer = pmer.checkpoint()
             elif isinstance(pmer, PJoin):
                 pmer = pmer.reduce(lambda l, r: (list(l), list(r)))
-            
-            if i == 0:
-                graph = pmer.pmer.graph
-            else:
-                graph = pmer.pmer.graph.union(graph)
 
+            graph = pmer.pmer.graph if i == 0 else pmer.pmer.graph.union(graph)
             sources.append(pmer.source)
 
-        name = kwargs.pop('name', 'dampr/{}'.format(random.random()))
+        name = kwargs.pop('name', f'dampr/{random.random()}')
         ds = pmer.pmer.runner(name, graph, **kwargs).run(sources)
         return [ValueEmitter(d) for d in ds]
 
